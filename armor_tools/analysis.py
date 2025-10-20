@@ -6,6 +6,7 @@ import lzma
 import gzip
 from pathlib import Path
 import os
+import numpy as np
 
 def decompress_xz(input_file, output_file=None):
     """
@@ -93,3 +94,66 @@ def remove_nc(file_path):
         return True
     else:
         return False
+
+
+
+
+def cal_beam_height(rng, elev_angle):
+    """
+    Function to calculate the beam height of a radar
+
+    Parameters
+    ----------
+    rng : int or float
+        range to a radar gate in meters
+
+    elev_angle : int or float
+        elevation angle for a radar gate in degrees
+
+    Returns
+    -------
+    float
+        height of range gate in meters
+    """
+
+    # Constants
+    A_E = 6371000 # Avg. Earth Radius (meters)
+    K = 4/3 # Refraction Term, assumes standard refraction of 4/3 ae
+
+    # Converting elev_angle to radians
+    rad_angle = elev_angle * (np.pi/180)
+
+    # Calculating Beam Height Above Radar Level
+    z_arl = np.sqrt(rng**2 + (K*A_E)**2 + 2*rng*K*A_E*np.sin(rad_angle)) - K*A_E
+
+    return z_arl
+
+def cal_elev_angle(rng, z_arl):
+    """
+    Function to calculate the elevation angle of a radar
+
+    Parameters
+    ----------
+    rng : int or float
+        range to a radar gate in meters
+
+    z_arl : int or float
+        height above radar level for a radar gate in meters
+
+    Returns
+    -------
+    float
+        elevation angle for range gate in degrees
+    """
+
+    # Constants
+    A_E = 6371000  # Avg. Earth Radius (meters)
+    K = 4 / 3  # Refraction Term, assumes standard refraction of 4/3 ae
+
+    # Solving for elevation angle in radians
+    rad_angle = np.arcsin(((z_arl + K * A_E) ** 2 - (K * A_E) ** 2 - rng ** 2) / (2 * rng * K * A_E))
+
+    # Converting elevation angle to degrees
+    elev_angle = rad_angle * (180/np.pi)
+
+    return elev_angle
