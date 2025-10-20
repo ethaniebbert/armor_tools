@@ -7,6 +7,7 @@ import gzip
 from pathlib import Path
 import os
 import numpy as np
+import xarray as xr
 
 def decompress_xz(input_file, output_file=None):
     """
@@ -95,6 +96,23 @@ def remove_nc(file_path):
     else:
         return False
 
+def list_fields(nc_filepath):
+    """
+        Lists fields contained in a netCDF ARMOR file
+
+        Parameters
+        ----------
+        nc_filepath : str or Path
+            Path to the .nc file to read.
+
+        Returns
+        -------
+        list
+            List contaning field names
+        """
+    ds = xr.open_dataset(nc_filepath)
+    vars = list(ds.keys())
+    return vars
 
 
 
