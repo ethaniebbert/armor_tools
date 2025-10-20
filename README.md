@@ -6,7 +6,7 @@ This python module adds several features that are convinient when working with d
 ---
 
 ## Features
-- Decompress multiple file thypes that ARMOR data comes in.
+- Decompress multiple file types that ARMOR data comes in.
 - Solving the radar height equation for both elevation angle and height in meters given a range.
 - Supports CFRadial and other Py-ART-compatible radar file formats.
 
