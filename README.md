@@ -16,7 +16,7 @@ This python module adds several features that are convinient when working with d
 
 Clone this repository:
 
-> 
+> https://github.com/ethaniebbert/armor_tools.git
 
 Navigate to the location where the repository was cloned:
 
