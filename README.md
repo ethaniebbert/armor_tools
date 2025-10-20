@@ -22,7 +22,7 @@ Navigate to the location where the repository was cloned:
 
 > cd /location/of/armor_tools
 
-Activate your python environment or create a new one (e.g. using canda or mamba):
+Activate your python environment or create a new one (e.g. using conda or mamba):
 
 > mamba activate your_env_name
 
