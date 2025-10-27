@@ -40,7 +40,7 @@ def plot_rhi(file_path, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_p
         'velocity': {'vmin': -vnyq if vnyq is not None else -16,'vmax': vnyq if vnyq is not None else 16,'cmap': 'PuOr_r', 'title': 'Radial Velocity (m/s)'},
         'spectrum_width': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
         'cross_correlation_ratio': {'vmin': 0.4, 'vmax': 1.05, 'cmap': 'plasmidis', 'title': 'RHO (ρhv)'},
-        'differential_reflectivity': {'vmin': -2, 'vmax': 6, 'cmap': 'pyart_RefDiff', 'title': 'ZDR (dB)'},
+        'differential_reflectivity': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
     }
 
     # Extract base time string
