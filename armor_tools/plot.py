@@ -2,10 +2,11 @@ import matplotlib.pyplot as plt
 import pyart
 from datetime import datetime, timedelta
 import numpy as np
+from pathlib import Path
 
 
 
-def plot_rhi(file_path, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_path = None):
+def plot_rhi(radar, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_path = None):
     """
     Plot one or more fields from an RHI radar file.
 
@@ -28,19 +29,32 @@ def plot_rhi(file_path, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_p
         Displays or saves a figure containing one subplot per field.
     """
 
-    # Reading in CFRadial File with Pyart
-    radar = pyart.io.read(file_path)
+    # Creates display object
     display = pyart.graph.RadarDisplay(radar)
     vnyq = radar.instrument_parameters['nyquist_velocity']['data'][0]
     sweeps = radar.sweep_number['data']
 
     # Dictionary of plotting parameters for each field
     FIELD_PARAMS = {
+        # Reflectivity
         'reflectivity': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
-        'velocity': {'vmin': -vnyq if vnyq is not None else -16,'vmax': vnyq if vnyq is not None else 16,'cmap': 'PuOr_r', 'title': 'Radial Velocity (m/s)'},
-        'spectrum_width': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
-        'cross_correlation_ratio': {'vmin': 0.4, 'vmax': 1.05, 'cmap': 'plasmidis', 'title': 'RHO (ρhv)'},
+        'REF': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
+
+        # Velocity
+        'velocity': {'vmin': -16, 'vmax': 16, 'cmap': 'PuOr_r', 'title': 'Radial Velocity (m/s)'},
+        'VEL': {'vmin': -16, 'vmax': 16, 'cmap': 'PuOr_r', 'title': 'Radial Velocity (m/s)'},
+
+        # Differential Reflectivity
         'differential_reflectivity': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
+        'ZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
+
+        # Cross-correlation ratio
+        'cross_correlation_ratio': {'vmin': 0.4, 'vmax': 1.05, 'cmap': 'plasma', 'title': 'RHO (ρhv)'},
+        'RHO': {'vmin': 0.4, 'vmax': 1.05, 'cmap': 'plasma', 'title': 'RHO (ρhv)'},
+
+        # Spectrum width
+        'spectrum_width': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
+        'SW': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
     }
 
     # Extract base time string
@@ -64,9 +78,6 @@ def plot_rhi(file_path, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_p
         axes = np.atleast_1d(axes).flatten()
 
         for i, field in enumerate(fields):
-            if field not in FIELD_PARAMS:
-                print(f"Warning: Unknown field '{field}', skipping.")
-                continue
 
             params = FIELD_PARAMS[field]
             ax = axes[i]

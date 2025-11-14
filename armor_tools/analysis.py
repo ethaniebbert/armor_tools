@@ -1,7 +1,7 @@
 '''
 The purpose of this Python file is to serve as a place for all data analysis functions to live.
 '''
-
+import pyart
 import lzma
 import gzip
 from pathlib import Path
@@ -73,6 +73,9 @@ def decompress_gz(input_file, output_file=None):
 
     return output_file
 
+def read_nc_pyart(input_file):
+    radar = pyart.io.read(input_file)
+    return radar
 
 def remove_nc(file_path):
     """
