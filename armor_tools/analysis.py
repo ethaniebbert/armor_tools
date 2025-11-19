@@ -117,7 +117,16 @@ def list_fields(nc_filepath):
     vars = list(ds.keys())
     return vars
 
+def L2_to_CFRad(L2_filename, save_path):
+    #strips the name of the file
+    base = os.path.splitext(os.path.basename(L2_filename))[0]
+    #adds the name to the save_path
+    out_path = os.path.join(save_path, f"{base}.nc")
+    #reads in the L2 file with pyart and converts it
+    radar = pyart.io.read_nexrad_archive(L2_filename)
+    pyart.io.write_cfradial(out_path, radar)
 
+    return out_path
 
 def cal_beam_height(rng, elev_angle):
     """
