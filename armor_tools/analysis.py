@@ -118,6 +118,27 @@ def list_fields(nc_filepath):
     return vars
 
 def L2_to_CFRad(L2_filename, save_path):
+    """
+    Convert a NEXRAD Level II radar file to CfRadial format.
+
+    This function reads a NEXRAD Level II archive file using Py-ART
+    and writes it out as a CfRadial-compliant NetCDF file. The output
+    filename matches the input name, but with a `.nc` extension, and is
+    saved to the specified directory.
+
+    Parameters
+    ----------
+    L2_filename : str or Path
+        Path to the NEXRAD Level II file to convert.
+
+    save_path : str or Path
+        Directory where the converted CfRadial file will be written.
+
+    Returns
+    -------
+    str
+        Full path to the output CfRadial `.nc` file.
+    """
     #strips the name of the file
     base = os.path.splitext(os.path.basename(L2_filename))[0]
     #adds the name to the save_path
@@ -187,3 +208,53 @@ def cal_elev_angle(rng, z_arl):
     elev_angle = rad_angle * (180/np.pi)
 
     return elev_angle
+
+
+def filter_folder_vcp(file_folder, vcp_min, vcp_max):
+    """
+    Filter .xz CfRadial files by VCP pattern.
+
+    Only files whose VCP value falls within the inclusive–exclusive
+    interval [vcp_min, vcp_max) are kept. Files with VCP values
+    outside this range are removed.
+
+    Common VCP ranges
+    -----------------
+       0–99 : RHI scans
+    100–199 : Sector scans
+    200–299 : Full-volume PPI scans
+    300-399 :
+    400–499 : Calibration scans
+
+    Parameters
+    ----------
+    file_folder : str or Path
+        Path to the folder containing `.xz` files to filter.
+
+    vcp_min : int
+        Minimum VCP value to retain (inclusive).
+
+    vcp_max : int
+        Maximum VCP value to retain (exclusive).
+
+    Returns
+    -------
+    None
+        Files are removed in place. No value is returned.
+    """
+    file_path = Path(file_folder)
+    files = sorted(file_path.glob("*.xz"))
+
+    for f in files:
+        f_nc = decompress_xz(f)
+        ds = xr.open_dataset(f_nc)
+        try:
+            vcp = int(ds.vcp_pattern)
+        finally:
+            ds.close()
+
+        # Delete if outside desired range
+        if not (vcp_min <= vcp < vcp_max):
+            os.remove(f)
+
+        remove_nc(f_nc)
