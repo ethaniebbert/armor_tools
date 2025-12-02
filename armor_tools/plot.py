@@ -119,11 +119,15 @@ def plot_rhi(radar, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_path 
             plt.show()
 
 
-def plot_ppi(radar, fields, sweeps = [0], xmin=-60, xmax=60, ymin=-60, ymax = 60, save_path = None, grids = False):
+def plot_ppi(radar, fields, sweeps = False, xmin=-60, xmax=60, ymin=-60, ymax = 60, save_path = None, grids = False):
     # Creates display object
     display = pyart.graph.RadarDisplay(radar)
     vnyq = radar.instrument_parameters['nyquist_velocity']['data'][0]
-    sweeps = radar.sweep_number['data']
+
+    if sweeps == False:
+        sweeps = radar.sweep_number['data']
+    else:
+        sweeps = sweeps
 
     # Dictionary of plotting parameters for each field
     FIELD_PARAMS = {
