@@ -30,6 +30,11 @@ Run the following to install:
 
 > pip install -e.
 
+---
+
+## Example Data
+Example data can be accesed using this google drive link:
+https://drive.google.com/drive/folders/1T3YEF9DxQhlTTg2-__Tn77weJgbVI8No?usp=drive_link
 
 # Contact
 Author: Ethan Ebbert
