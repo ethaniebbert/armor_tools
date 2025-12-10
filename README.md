@@ -36,7 +36,7 @@ Run the following to install:
 ---
 
 ## Example Data
-Example data can be accesed using this google drive link:
+Example data can be accessed using this google drive link:
 https://drive.google.com/drive/folders/1T3YEF9DxQhlTTg2-__Tn77weJgbVI8No?usp=drive_link
 
 # Contact
