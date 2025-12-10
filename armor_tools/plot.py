@@ -8,25 +8,33 @@ from pathlib import Path
 
 def plot_rhi(radar, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_path = None, grids = False):
     """
-    Plot one or more fields from an RHI radar file.
+    Generate Range–Height Indicator (RHI) plots for one or more radar fields.
+
+    This function creates one subplot per requested field from an RHI scan,
+    applying field-specific colormaps, limits, and titles. Each sweep is plotted
+    individually with metadata such as azimuth angle and sweep time. Figures can
+    be displayed interactively or saved to disk.
 
     Parameters
     ----------
-    radar : str or Path
-        Pyart radar project
+    radar : pyart.core.Radar
+        PyART Radar object
     fields : list of str
-        List of field names to be plotted (e.g., ['reflectivity', 'velocity']).
+        Names of fields to plot (e.g., ['reflectivity', 'velocity']).
     xmin, xmax : float, optional
-        Horizontal range limits in km (default: 0–60).
+        Horizontal range limits in km. Defaults to 0–60 km.
     ymin, ymax : float, optional
-        Vertical range limits in km (default: 0–12).
+        Vertical range limits in km. Defaults to 0–12 km.
     save_path : str or Path, optional
-        If provided, saves the figure to this file path.
+        Directory where output figures will be written. If None, figures display
+        instead of saving.
+    grids : bool, optional
+        If True, enables major and minor gridlines on each subplot.
 
     Returns
     -------
     None
-        Displays or saves a figure containing one subplot per field.
+        Displays or saves RHI figures for each sweep.
     """
 
     # Creates display object
@@ -120,6 +128,38 @@ def plot_rhi(radar, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_path 
 
 
 def plot_ppi(radar, fields, sweeps = False, xmin=-60, xmax=60, ymin=-60, ymax = 60, save_path = None, grids = False):
+    """
+        Generate Plan Position Indicator (PPI) plots for one or more radar fields.
+
+        This function creates one subplot per requested field from specified PPI
+        sweeps. Each panel includes field‐specific colormaps, limits, and titles,
+        along with sweep metadata such as elevation angle and timestamp. Figures can
+        either be displayed interactively or saved to a directory.
+
+        Parameters
+        ----------
+        radar : pyart.core.Radar
+            PyART Radar object.
+        fields : list of str
+            Names of fields to plot (e.g., ['reflectivity', 'velocity']).
+        sweeps : list of int or bool, optional
+            Sweep numbers to plot. If False (default), all sweeps available in the
+            radar file are plotted.
+        xmin, xmax : float, optional
+            Horizontal plot extent in km (east–west). Defaults to –60 to 60 km.
+        ymin, ymax : float, optional
+            Vertical plot extent in km (north–south). Defaults to –60 to 60 km.
+        save_path : str or Path, optional
+            Directory where output figures will be written. If None, figures display
+            instead of saving.
+        grids : bool, optional
+            If True, enables major and minor gridlines on each subplot.
+
+        Returns
+        -------
+        None
+            Displays or saves PPI figures for each sweep.
+        """
     # Creates display object
     display = pyart.graph.RadarDisplay(radar)
     vnyq = radar.instrument_parameters['nyquist_velocity']['data'][0]
