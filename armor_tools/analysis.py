@@ -212,19 +212,8 @@ def cal_elev_angle(rng, z_arl):
 
 def filter_folder_vcp(file_folder, vcp_min, vcp_max):
     """
-    Filter .xz CfRadial files by VCP pattern.
-
-    Only files whose VCP value falls within the inclusive–exclusive
-    interval [vcp_min, vcp_max) are kept. Files with VCP values
-    outside this range are removed.
-
-    Common VCP ranges
-    -----------------
-       0–99 : RHI scans
-    100–199 : Sector scans
-    200–299 : Full-volume PPI scans
-    300-399 :
-    400–499 : Calibration scans
+    Return a list of .xz CfRadial files whose VCP value falls within
+    the interval [vcp_min, vcp_max). No files are deleted.
 
     Parameters
     ----------
@@ -239,22 +228,29 @@ def filter_folder_vcp(file_folder, vcp_min, vcp_max):
 
     Returns
     -------
-    None
-        Files are removed in place. No value is returned.
+    list of Path
+        Files whose VCP values fall within the specified range.
     """
     file_path = Path(file_folder)
     files = sorted(file_path.glob("*.xz"))
+    kept_files = []
 
     for f in files:
+        # decompress to temp .nc
         f_nc = decompress_xz(f)
+
+        # read VCP
         ds = xr.open_dataset(f_nc)
         try:
             vcp = int(ds.vcp_pattern)
         finally:
             ds.close()
 
-        # Delete if outside desired range
-        if not (vcp_min <= vcp < vcp_max):
-            os.remove(f)
+        # keep file if within range
+        if vcp_min <= vcp < vcp_max:
+            kept_files.append(f)
 
+        # remove the temporary .nc
         remove_nc(f_nc)
+
+    return kept_files
