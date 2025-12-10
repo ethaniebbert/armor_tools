@@ -26,6 +26,9 @@ Activate your python environment or create a new one (e.g. using conda or mamba)
 
 > mamba activate your_env_name
 
+Install pyart first by running the following command using mamba (or conda):
+> mamba install -c conda-forge arm_pyart
+
 Run the following to install:
 
 > pip install -e.
