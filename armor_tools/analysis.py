@@ -73,9 +73,6 @@ def decompress_gz(input_file, output_file=None):
 
     return output_file
 
-def read_nc_pyart(input_file):
-    radar = pyart.io.read(input_file)
-    return radar
 
 def remove_nc(file_path):
     """
