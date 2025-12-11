@@ -16,7 +16,7 @@ This python module adds several features that are convinient when working with d
 
 Clone this repository:
 
-> https://github.com/ethaniebbert/armor_tools.git
+> git clone https://github.com/ethaniebbert/armor_tools.git
 
 Navigate to the location where the repository was cloned:
 
@@ -26,10 +26,18 @@ Activate your python environment or create a new one (e.g. using conda or mamba)
 
 > mamba activate your_env_name
 
+Install pyart first by running the following command using mamba (or conda):
+> mamba install -c conda-forge arm_pyart
+
 Run the following to install:
 
 > pip install -e.
 
+---
+
+## Example Data
+Example data can be accessed using this google drive link:
+https://drive.google.com/drive/folders/1T3YEF9DxQhlTTg2-__Tn77weJgbVI8No?usp=drive_link
 
 # Contact
 Author: Ethan Ebbert
