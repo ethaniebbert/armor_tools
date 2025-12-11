@@ -34,13 +34,13 @@ Loop through the list of files:
 '''
 
 # Filtering cfrad files for RHI scans
-filtered_rhi_data = an.filter_folder_vcp(data, 0, 99)
+filtered_rhi_data = an.filter_folder_vcp(DATA, 0, 99)
 
 # plotting RHI scans
 for f in filtered_rhi_data:
     f_nc = an.decompress_xz(f)
     radar = pyart.io.read(f_nc)
-    aplt.plot_rhi(radar, fields=fields, save_path=plots, grids=True, xmax=60, ymax=12)
+    aplt.plot_rhi(radar, fields=fields, save_path=RHI_PLOTS, grids=True, xmax=60, ymax=12)
     an.remove_nc(f_nc)
 
 # === PPI PLotting Example ===
@@ -58,12 +58,12 @@ Loop through the list of files:
 sweeps = [0]
 
 # Filtering cfrad files for PPI scans
-filtered_ppi_data = an.filter_folder_vcp(data, 200, 299)
+filtered_ppi_data = an.filter_folder_vcp(DATA, 200, 299)
 
 # plotting RHI scans
 for f in filtered_ppi_data:
     f_nc = an.decompress_xz(f)
     radar = pyart.io.read(f_nc)
-    aplt.plot_ppi(radar, sweeps=sweeps, fields=fields, save_path=plots, grids=True, xmin=-120, ymin=-120, xmax=120,
+    aplt.plot_ppi(radar, sweeps=sweeps, fields=fields, save_path=PPI_PLOTS, grids=True, xmin=-120, ymin=-120, xmax=120,
                   ymax=120)
     an.remove_nc(f_nc)
