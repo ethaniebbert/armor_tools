@@ -7,7 +7,7 @@ import pyart
 root = Path('/Users/eebbert/Downloads/example_data/')
 
 # Standard data directory (adjust only if needed)
-DATA = root / 'analysis_data1'
+DATA = root / 'analysis_data'
 
 # Example input files
 sample_xz = DATA / "ARMR20251205093641.nc.xz"

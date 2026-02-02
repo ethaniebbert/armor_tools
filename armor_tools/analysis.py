@@ -251,3 +251,25 @@ def filter_folder_vcp(file_folder, vcp_min, vcp_max):
         remove_nc(f_nc)
 
     return kept_files
+
+
+def correct_elevation_pointing_angle(radar, offset=0.30):
+    """
+    Apply a pointing-angle correction to radar elevation data.
+    Modifies the radar object in-place and returns it.
+    """
+
+    for sweep in range(radar.nsweeps):
+
+        start = radar.sweep_start_ray_index['data'][sweep]
+        end = radar.sweep_end_ray_index['data'][sweep] + 1
+
+        elev = radar.elevation['data'][start:end]
+
+        # Determine sweep direction from elevation trend
+        if elev[-1] > elev[0]:      # bottom-to-top
+            radar.elevation['data'][start:end] += offset
+        else:                        # top-to-bottom
+            radar.elevation['data'][start:end] -= offset
+
+    return radar

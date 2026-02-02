@@ -40,7 +40,7 @@ filtered_rhi_data = an.filter_folder_vcp(DATA, 0, 99)
 for f in filtered_rhi_data:
     f_nc = an.decompress_xz(f)
     radar = pyart.io.read(f_nc)
-    aplt.plot_rhi(radar, fields=fields, save_path=RHI_PLOTS, grids=True, xmax=60, ymax=12)
+    aplt.plot_rhi(radar, fields=fields, save_path=RHI_PLOTS, grids=True, xmax=40, ymax=10)
     an.remove_nc(f_nc)
 
 # === PPI PLotting Example ===
@@ -60,7 +60,7 @@ sweeps = [0]
 # Filtering cfrad files for PPI scans
 filtered_ppi_data = an.filter_folder_vcp(DATA, 200, 299)
 
-# plotting RHI scans
+# plotting PPI scans
 for f in filtered_ppi_data:
     f_nc = an.decompress_xz(f)
     radar = pyart.io.read(f_nc)
