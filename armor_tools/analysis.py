@@ -273,3 +273,48 @@ def correct_elevation_pointing_angle(radar, offset=0.30):
             radar.elevation['data'][start:end] -= offset
 
     return radar
+
+def noise_filter(radar, field_in,  SNR = 5, rho = 0.6):
+    '''
+    :param radar: pyart radar object
+    :param field_in: string; the field you wish to filter
+    :param SNR: Signal to Noise Ratio Threshold, everything below this will be masked out, 5 is default
+    :param rho: Correlation Coefficient Threshold, everything below this will be masked out, 0.6 is default, which is a decent threshold for non-meteorological echos during convection
+    :return: radar: pyart radar object with "F{field}}" field added
+    '''
+
+    # applying thresholds to pyart gatefilter
+    gatefilter = pyart.correct.GateFilter(radar)
+    gatefilter.exclude_below('SNR', SNR)
+    gatefilter.exclude_below('RHO', rho)
+
+    # Get reflectivity field
+    field = radar.fields[field_in]
+    field_data = field['data']
+
+    #extracting field metadata
+    coordinates = field['coordinates']
+    valid_min = field['valid_min']
+    valid_max = field['valid_max']
+    standard_name = f"filtered_{field['standard_name']}"
+    long_name = f"Filtered {field['long_name']}"
+    units = field['units']
+
+    # Mask data using gatefilter
+    masked_data = np.ma.masked_where(gatefilter.gate_excluded, field_data)
+
+    # Create new field dictionary
+    filtered_field_dict = {
+        'coordinates': coordinates,
+        'valid_min': valid_min,
+        'valid_max': valid_max,
+        'standard_name': standard_name,
+        'long_name': long_name,
+        'units': units,
+        'data': masked_data
+        }
+
+    # Add field to radar object
+    radar.add_field(f'F{field_in}', filtered_field_dict, replace_existing=True)
+
+    return radar
