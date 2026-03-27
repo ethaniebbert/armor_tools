@@ -8,6 +8,8 @@ from pathlib import Path
 import os
 import numpy as np
 import xarray as xr
+from datetime import datetime, timedelta
+from typing import List
 
 def decompress_xz(input_file, output_file=None):
     """
@@ -340,3 +342,235 @@ def noise_filter(radar, field_in,  SNR = 5, rho = 0.6):
     radar.add_field(f'F{field_in}', filtered_field_dict, replace_existing=True)
 
     return radar
+
+def find_files_in_timerange(root: Path, start_datetime: datetime, end_datetime: datetime) -> List[Path]:
+    """
+    Find all files in directories formatted as:
+
+        root / 'YYYYMMDD' / 'ARMRYYYYMMDDHHMMSS.nc.xz'
+
+    whose embedded filename timestamp is between start_datetime and end_datetime,
+    inclusive.
+
+    Parameters
+    ----------
+    root : Path
+        Top-level directory containing YYYYMMDD subdirectories.
+    start_datetime : datetime
+        Start of desired time range.
+    end_datetime : datetime
+        End of desired time range.
+
+    Returns
+    -------
+    List[Path]
+        Sorted list of matching file paths.
+    """
+
+    if end_datetime < start_datetime:
+        raise ValueError("end_datetime must be greater than or equal to start_datetime")
+
+    matching_files = []
+
+    # Start from the date part only
+    current_date = start_datetime.date()
+    final_date = end_datetime.date()
+
+    while current_date <= final_date:
+        date_str = current_date.strftime("%Y%m%d")
+        day_dir = root / date_str
+
+        if day_dir.exists() and day_dir.is_dir():
+            for file_path in day_dir.glob("ARMR*.nc.xz"):
+                try:
+                    # Example filename: ARMR20260327230000.nc.xz
+                    timestamp_str = file_path.name[len("ARMR"):len("ARMR") + 14]
+                    file_datetime = datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
+                except ValueError:
+                    # Skip files that do not match expected naming format
+                    continue
+
+                if start_datetime <= file_datetime <= end_datetime:
+                    matching_files.append(file_path)
+
+        current_date += timedelta(days=1)
+
+    return sorted(matching_files)
+
+def filter_files_vcp(files, vcp_min, vcp_max):
+    """
+    Return a list of .xz CfRadial files whose VCP value falls within
+    the interval [vcp_min, vcp_max).
+
+    Parameters
+    ----------
+    files : iterable of str or Path
+        Collection of `.xz` file paths to filter.
+
+    vcp_min : int
+        Minimum VCP value to retain (inclusive).
+
+    vcp_max : int
+        Maximum VCP value to retain (exclusive).
+
+    Returns
+    -------
+    list of Path
+        Files whose VCP values fall within the specified range.
+    """
+    kept_files = []
+
+    for f in sorted(Path(f) for f in files):
+        # decompress to temp .nc
+        f_nc = decompress_xz(f)
+
+        ds = xr.open_dataset(f_nc)
+        try:
+            vcp = int(ds.vcp_pattern)
+        finally:
+            ds.close()
+
+        # keep file if within range
+        if vcp_min <= vcp < vcp_max:
+            kept_files.append(f)
+
+        # remove the temporary .nc
+        remove_nc(f_nc)
+
+    return kept_files
+
+
+import pyart
+
+
+def dealias_velocity(radar,vel_field='VEL',texture_field='velocity_texture',output_field='FVEL',wind_size=3,texture_threshold=3,centered=True):
+    """
+    Dealias Doppler velocity using a velocity-texture-based gatefilter.
+
+    Parameters
+    ----------
+    radar : pyart.core.Radar
+        Py-ART Radar object.
+
+    vel_field : str, optional
+        Name of the input velocity field. Default is 'VEL'.
+
+    texture_field : str, optional
+        Name of the velocity texture field to create/use. Default is
+        'velocity_texture'.
+
+    output_field : str, optional
+        Name of the dealiased velocity field to save. Default is
+        'corrected_velocity'.
+
+    wind_size : int, optional
+        Window size passed to Py-ART's velocity texture calculation.
+        Default is 3.
+
+    texture_threshold : float, optional
+        Gates with velocity texture above this value will be excluded
+        before dealiasing. Default is 3.
+
+    centered : bool, optional
+        Passed to pyart.correct.dealias_region_based. Default is True.
+
+    Returns
+    -------
+    radar : pyart.core.Radar
+        Radar object with:
+        - texture_field added
+        - output_field added
+    """
+
+    if vel_field not in radar.fields:
+        raise KeyError(f"Field '{vel_field}' not found in radar.fields")
+
+    if 'nyquist_velocity' not in radar.instrument_parameters:
+        raise KeyError("Nyquist velocity not found in radar.instrument_parameters")
+
+    nyquist = radar.instrument_parameters['nyquist_velocity']['data'][0]
+
+    # Compute velocity texture
+    vel_texture = pyart.retrieve.calculate_velocity_texture(
+        radar,
+        vel_field=vel_field,
+        wind_size=wind_size,
+        nyq=nyquist
+    )
+
+    radar.add_field(texture_field, vel_texture, replace_existing=True)
+
+    # Build gatefilter from velocity texture
+    gatefilter = pyart.filters.GateFilter(radar)
+    gatefilter.exclude_above(texture_field, texture_threshold)
+
+    # Dealias velocity
+    velocity_dealiased = pyart.correct.dealias_region_based(
+        radar,
+        vel_field=vel_field,
+        nyquist_vel=nyquist,
+        centered=centered,
+        gatefilter=gatefilter
+    )
+
+    radar.add_field(output_field, velocity_dealiased, replace_existing=True)
+
+    return radar
+
+from pathlib import Path
+import pyart
+
+
+def radar_to_nc(radar,original_file,output_dir,suffix=None,overwrite=True):
+    """
+    Save a Py-ART radar object using the original ARMOR filename.
+
+    Parameters
+    ----------
+    radar : pyart.core.Radar
+        Radar object to save.
+
+    original_file : str or Path
+        Original file path (used to extract filename).
+
+    output_dir : str or Path
+        Directory where the new file will be saved.
+
+    suffix : str, optional
+        Optional suffix to append to filename (e.g., '_qc').
+
+    overwrite : bool, optional
+        Whether to overwrite existing files.
+
+    Returns
+    -------
+    Path
+        Path to saved file.
+    """
+
+    original_file = Path(original_file)
+    output_dir = Path(output_dir)
+
+    # Get base filename (remove .xz if present)
+    name = original_file.name
+    if name.endswith('.xz'):
+        name = name[:-3]  # remove '.xz'
+
+    # Optionally add suffix before .nc
+    if suffix:
+        stem = Path(name).stem  # ARMR20260327...
+        name = f"{stem}{suffix}.nc"
+
+    output_path = output_dir / name
+
+    # Make sure directory exists
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Handle overwrite
+    if output_path.exists() and not overwrite:
+        raise FileExistsError(f"{output_path} already exists")
+
+    # Save file
+    pyart.io.write_cfradial(output_path, radar)
+
+    return output_path
