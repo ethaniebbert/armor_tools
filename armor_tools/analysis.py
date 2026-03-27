@@ -440,9 +440,6 @@ def filter_files_vcp(files, vcp_min, vcp_max):
     return kept_files
 
 
-import pyart
-
-
 def dealias_velocity(radar,vel_field='VEL',texture_field='velocity_texture',output_field='FVEL',wind_size=3,texture_threshold=3,centered=True):
     """
     Dealias Doppler velocity using a velocity-texture-based gatefilter.
@@ -516,9 +513,6 @@ def dealias_velocity(radar,vel_field='VEL',texture_field='velocity_texture',outp
     radar.add_field(output_field, velocity_dealiased, replace_existing=True)
 
     return radar
-
-from pathlib import Path
-import pyart
 
 
 def radar_to_nc(radar,original_file,output_dir,suffix=None,overwrite=True):
