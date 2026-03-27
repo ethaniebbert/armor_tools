@@ -287,6 +287,129 @@ def correct_elevation_pointing_angle(radar, offset=0.30):
 
     return radar
 
+def correct_azimuth_pointing_angle_ppi_dynamic(radar):
+    """
+    Apply a scan-speed-dependent azimuth correction per sweep.
+
+    Sweep direction is determined from the azimuth trend within each sweep,
+    similar to the elevation correction function.
+
+    Uses empirical relationship from ARMOR pointing study:
+        correction ≈ 0.133 * (scan_speed - 10)
+
+    Returns
+    -------
+    radar
+        Py-ART radar object with azimuth corrections applied per sweep
+    """
+
+    for sweep in range(radar.nsweeps):
+
+        start = radar.sweep_start_ray_index['data'][sweep]
+        end = radar.sweep_end_ray_index['data'][sweep] + 1
+
+        az = np.asarray(radar.azimuth['data'][start:end])
+        time_vals = np.asarray(radar.time['data'][start:end])
+
+        if len(az) < 2:
+            continue
+
+        # unwrap azimuth so 359 -> 0 behaves correctly
+        az_unwrapped = np.rad2deg(np.unwrap(np.deg2rad(az)))
+
+        # determine sweep direction from azimuth trend
+        if az_unwrapped[-1] > az_unwrapped[0]:
+            direction = 'cw'
+        else:
+            direction = 'ccw'
+
+        # compute sweep-mean scan speed
+        sweep_dt = time_vals[-1] - time_vals[0]
+        if sweep_dt <= 0:
+            print(f'Sweep {sweep}: invalid sweep duration, skipping')
+            continue
+
+        sweep_dtheta = np.abs(az_unwrapped[-1] - az_unwrapped[0])
+        scan_speed = sweep_dtheta / sweep_dt
+
+        speeds = np.array([10, 15, 20, 25])
+        errors = np.array([0.042857, -0.657143, -1.328571, -2.042857])
+
+        coef = np.polyfit(speeds, errors, 1)
+
+        # correction = -error
+        slope = -coef[0]
+        intercept = -coef[1]
+
+        correction = slope * scan_speed + intercept
+
+        # apply sign based on sweep direction
+        if direction == 'cw':
+            radar.azimuth['data'][start:end] = (radar.azimuth['data'][start:end] + correction) % 360.0
+            sign_str = '+'
+        else:
+            radar.azimuth['data'][start:end] = (radar.azimuth['data'][start:end] - correction) % 360.0
+            sign_str = '-'
+
+    return radar
+
+def correct_azimuth_pointing_angle_sector(radar, offset=3.1, direction_sensitive=True, verbose=True):
+    """
+    Apply a simple hard-coded azimuth correction per sweep.
+    This offset was found visiauuly and serves as a first pass, the correction may not be 100% accurate
+    Parameters
+    ----------
+    radar : Py-ART radar object
+    offset : float
+        Azimuth correction magnitude in degrees.
+    direction_sensitive : bool
+        If True, apply +offset for clockwise sweeps and -offset for
+        counterclockwise sweeps.
+        If False, apply the same +offset to all sweeps.
+    verbose : bool
+        If True, print sweep-by-sweep correction info.
+
+    Returns
+    -------
+    radar
+        Py-ART radar object with azimuth corrections applied.
+    """
+
+    for sweep in range(radar.nsweeps):
+        start = radar.sweep_start_ray_index['data'][sweep]
+        end = radar.sweep_end_ray_index['data'][sweep] + 1
+
+        az = np.asarray(radar.azimuth['data'][start:end])
+
+        if len(az) < 2:
+            continue
+
+        # unwrap so crossing 360 does not fake a direction change
+        az_unwrapped = np.rad2deg(np.unwrap(np.deg2rad(az)))
+
+        # radar azimuth increasing = clockwise
+        if az_unwrapped[-1] > az_unwrapped[0]:
+            direction = 'cw'
+        else:
+            direction = 'ccw'
+
+        if direction_sensitive:
+            signed_offset = offset if direction == 'cw' else -offset
+        else:
+            signed_offset = offset
+
+        radar.azimuth['data'][start:end] = (
+            radar.azimuth['data'][start:end] + signed_offset
+        ) % 360.0
+
+        if verbose:
+            print(
+                f"Sweep {sweep}: direction={direction}, "
+                f"applied correction={signed_offset:+.3f} deg"
+            )
+
+    return radar
+
 def noise_filter(radar, field_in,  SNR = 5, rho = 0.6):
     '''
     Applies a basic clutter filter to filter out noise.
