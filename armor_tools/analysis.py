@@ -257,6 +257,17 @@ def correct_elevation_pointing_angle(radar, offset=0.30):
     """
     Apply a pointing-angle correction to radar elevation data.
     Modifies the radar object in-place and returns it.
+
+    Parameters
+    ----------
+    radar: Py-ART radar object
+    offset: float
+        elevation correction in degrees to apply to elevation values. Default is .30 degrees, which is valid for around 3 degrees/s of elevation scan speed.
+    
+    Returns
+    -------
+    radar
+        Py-ART radar object with elevation corrections applied to all sweeps
     """
 
     for sweep in range(radar.nsweeps):
@@ -276,11 +287,22 @@ def correct_elevation_pointing_angle(radar, offset=0.30):
 
 def noise_filter(radar, field_in,  SNR = 5, rho = 0.6):
     '''
-    :param radar: pyart radar object
-    :param field_in: string; the field you wish to filter
-    :param SNR: Signal to Noise Ratio Threshold, everything below this will be masked out, 5 is default
-    :param rho: Correlation Coefficient Threshold, everything below this will be masked out, 0.6 is default, which is a decent threshold for non-meteorological echos during convection
-    :return: radar: pyart radar object with "F{field}}" field added
+    Applies a basic clutter filter to filter out noise.
+    It is based on thresholds of SNR and RHOHV, change these as necessary for your data.
+
+    Parameters
+    ----------
+    radar: pyart radar object
+    field_in: string 
+        the field you wish to filter
+    SNR: float 
+        Signal to Noise Ratio Threshold, everything below this will be masked out, 5 is default
+    rho: float
+        Correlation Coefficient Threshold, everything below this will be masked out, 0.6 is default, which is a decent threshold for non-meteorological echos during convection
+
+    Returns
+    ------- 
+        radar: pyart radar object with "F{field}" field added
     '''
 
     # applying thresholds to pyart gatefilter
