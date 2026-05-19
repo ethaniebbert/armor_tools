@@ -504,17 +504,19 @@ def find_files_in_timerange(root: Path, start_datetime: datetime, end_datetime: 
         day_dir = root / date_str
 
         if day_dir.exists() and day_dir.is_dir():
-            for file_path in day_dir.glob("ARMR*.nc.xz"):
-                try:
-                    # Example filename: ARMR20260327230000.nc.xz
-                    timestamp_str = file_path.name[len("ARMR"):len("ARMR") + 14]
-                    file_datetime = datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
-                except ValueError:
-                    # Skip files that do not match expected naming format
-                    continue
+            seen_timestamps = set()
+            for pattern in ("ARMR*.nc", "ARMR*.nc.xz"):
+                for file_path in day_dir.glob(pattern):
+                    try:
+                        timestamp_str = file_path.name[len("ARMR"):len("ARMR") + 14]
+                        file_datetime = datetime.strptime(timestamp_str, "%Y%m%d%H%M%S")
+                    except ValueError:
+                        continue
 
-                if start_datetime <= file_datetime <= end_datetime:
-                    matching_files.append(file_path)
+                    if start_datetime <= file_datetime <= end_datetime:
+                        if file_datetime not in seen_timestamps:
+                            seen_timestamps.add(file_datetime)
+                            matching_files.append(file_path)
 
         current_date += timedelta(days=1)
 
