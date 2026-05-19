@@ -48,6 +48,7 @@ def plot_rhi(radar, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_path 
         'reflectivity': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
         'REF': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
         'FREF': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
+        'corrected_reflectivity': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
 
         # Velocity
         'velocity': {'vmin': -16, 'vmax': 16, 'cmap': 'PuOr_r', 'title': 'Radial Velocity (m/s)'},
@@ -55,19 +56,26 @@ def plot_rhi(radar, fields, xmin = 0, xmax = 60, ymin = 0, ymax = 12, save_path 
         'FVEL': {'vmin': -16, 'vmax': 16, 'cmap': 'PuOr_r', 'title': 'Radial Velocity (m/s)'},
 
         # Differential Reflectivity
-        'differential_reflectivity': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
-        'ZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
-        'FZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
+        'differential_reflectivity': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'Differential Reflectivity (dB)'},
+        'ZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'Differential Reflectivity (dB)'},
+        'FZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'Differential Reflectivity (dB)'},
+        'corrected_zdr': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'Differential Reflectivity (dB)'},
 
         # Cross-correlation ratio
         'cross_correlation_ratio': {'vmin': 0.4, 'vmax': 1.05, 'cmap': 'plasma', 'title': 'RHO (ρhv)'},
-        'RHO': {'vmin': 0.4, 'vmax': 1.05, 'cmap': 'plasma', 'title': 'RHO (ρhv)'},
-        'FRHO': {'vmin': 0.4, 'vmax': 1.05, 'cmap': 'plasma', 'title': 'RHO (ρhv)'},
+        'RHO': {'vmin': 0.6, 'vmax': 1.05, 'cmap': 'plasma', 'title': 'RHO (ρhv)'},
+        'FRHO': {'vmin': 0.6, 'vmax': 1.05, 'cmap': 'plasma', 'title': 'RHO (ρhv)'},
 
         # Spectrum width
         'spectrum_width': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
         'SW': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
         'FSW': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
+
+        # Differential phase
+        'differential_phase': {'vmin': 0, 'vmax': 180, 'cmap': 'viridis', 'title': 'Differential Phase (deg)'},
+        'PHI': {'vmin': 0, 'vmax': 180, 'cmap': 'viridis', 'title': 'Differential Phase (deg)'},
+        'FPHI': {'vmin': 0, 'vmax': 180, 'cmap': 'viridis', 'title': 'Differential Phase (deg)'},
+
     }
 
     # Extract base time string
@@ -180,6 +188,7 @@ def plot_ppi(radar, fields, sweeps = False, xmin=-60, xmax=60, ymin=-60, ymax = 
         'reflectivity': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
         'REF': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
         'FREF': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
+        'corrected_reflectivity': {'vmin': -10, 'vmax': 70, 'cmap': 'HomeyerRainbow', 'title': 'Reflectivity (dBZ)'},
 
         # Velocity
         'velocity': {'vmin': -16, 'vmax': 16, 'cmap': 'PuOr_r', 'title': 'Radial Velocity (m/s)'},
@@ -187,9 +196,10 @@ def plot_ppi(radar, fields, sweeps = False, xmin=-60, xmax=60, ymin=-60, ymax = 
         'FVEL': {'vmin': -16, 'vmax': 16, 'cmap': 'PuOr_r', 'title': 'Radial Velocity (m/s)'},
 
         # Differential Reflectivity
-        'differential_reflectivity': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
-        'ZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
-        'FZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'ZDR (dB)'},
+        'differential_reflectivity': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'Differential Reflectivity (dB)'},
+        'ZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'Differential Reflectivity (dB)'},
+        'FZDR': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'Differential Reflectivity (dB)'},
+        'corrected_zdr': {'vmin': -2, 'vmax': 6, 'cmap': 'ChaseSpectral', 'title': 'Differential Reflectivity (dB)'},
 
         # Cross-correlation ratio
         'cross_correlation_ratio': {'vmin': 0.4, 'vmax': 1.05, 'cmap': 'plasma', 'title': 'RHO (ρhv)'},
@@ -200,6 +210,11 @@ def plot_ppi(radar, fields, sweeps = False, xmin=-60, xmax=60, ymin=-60, ymax = 
         'spectrum_width': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
         'SW': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
         'FSW': {'vmin': 0, 'vmax': 10, 'cmap': 'pyart_NWS_SPW', 'title': 'Spectrum Width (m/s)'},
+
+        # Differential phase
+        'differential_phase': {'vmin': 0, 'vmax': 180, 'cmap': 'viridis', 'title': 'Differential Phase (deg)'},
+        'PHI': {'vmin': 0, 'vmax': 180, 'cmap': 'viridis', 'title': 'Differential Phase (deg)'},
+        'FPHI': {'vmin': 0, 'vmax': 180, 'cmap': 'viridis', 'title': 'Differential Phase (deg)'},
     }
 
     # Extract base time string

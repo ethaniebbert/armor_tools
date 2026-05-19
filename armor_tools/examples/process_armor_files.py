@@ -19,18 +19,19 @@ ROOT = Path('/nas/rhome/eebbert/armor/cfrad/')
 
 # (year, month, date, hour, minute, second)
 start_datetime = datetime(2025, 5, 20, 0, 0, 0)
-end_datetime   = datetime(2025, 5, 21, 0, 0, 0)
+end_datetime   = datetime(2025, 5, 20, 23, 59, 59)
 
 # output directory
 start_str = start_datetime.strftime('%Y%m%d')
 end_str = end_datetime.strftime('%Y%m%d')
 date_str = start_str if start_str == end_str else f"{start_str}_{end_str}"
-output = Path(f'/wopr1/timeslice/armor_BNF')
+output = Path(f'/wopr1/timeslice/armor_BNF/{date_str}')
 output.mkdir(parents=True, exist_ok=True)
 
 
 # elevation angle offset for RHI scan corrections
-el_offset = 0.3
+el_offset = 0.9
+az_offset_sector = 3.1
 
 # Values for clutter filtering
 SNR = 5 # SNR threshold
@@ -105,13 +106,6 @@ for f in tqdm(rhi_files, desc='QC-ing RHI Files', unit='file'):
         if f_nc is not None:
             analysis.remove_nc(f_nc)
 
-# QC Steps:
-# Pointing Angle Correction
-# Clutter Filter
-# Velocity Dealias
-# Save as new .nc file
-# QC-ing PPI Files
-
 for f in tqdm(ppi_files, desc='QC-ing PPI Files', unit='file'):
     # quality control functions
     f_nc = None
@@ -151,14 +145,9 @@ for f in tqdm(ppi_files, desc='QC-ing PPI Files', unit='file'):
         if f_nc is not None:
             analysis.remove_nc(f_nc)
 
-# QC Steps:
-# Pointing Angle Correction
-# Clutter Filter
-# Velocity Dealias
-# Save as new .nc file
 
 # QC-ing PPI Sector Files
-for f in tqdm(ppi_files, desc='QC-ing PPI Sector Files', unit='file'):
+for f in tqdm(ppi_sector_files, desc='QC-ing PPI Sector Files', unit='file'):
     # quality control functions
     f_nc = None
     try:
@@ -169,7 +158,7 @@ for f in tqdm(ppi_files, desc='QC-ing PPI Sector Files', unit='file'):
         radar = pyart.io.read(f_nc)
 
         # correcting pointing angle
-        radar = analysis.correct_azimuth_pointing_angle_sector(radar, verbose=False)
+        radar = analysis.correct_azimuth_pointing_angle_sector(radar, offset=az_offset_sector, verbose=False)
 
         # clutter filtering
         for field in fields_to_filter:

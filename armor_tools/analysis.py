@@ -528,7 +528,7 @@ def filter_files_vcp(files, vcp_min, vcp_max):
     Parameters
     ----------
     files : iterable of str or Path
-        Collection of `.xz` file paths to filter.
+        Collection of `.xz` or `.nc` file paths to filter.
 
     vcp_min : int
         Minimum VCP value to retain (inclusive).
@@ -544,8 +544,12 @@ def filter_files_vcp(files, vcp_min, vcp_max):
     kept_files = []
 
     for f in sorted(Path(f) for f in files):
-        # decompress to temp .nc
-        f_nc = decompress_xz(f)
+        if f.suffix == '.nc':
+            f_nc = f
+            temp = False
+        else:
+            f_nc = decompress_xz(f)
+            temp = True
 
         ds = xr.open_dataset(f_nc)
         try:
@@ -553,12 +557,11 @@ def filter_files_vcp(files, vcp_min, vcp_max):
         finally:
             ds.close()
 
-        # keep file if within range
         if vcp_min <= vcp < vcp_max:
             kept_files.append(f)
 
-        # remove the temporary .nc
-        remove_nc(f_nc)
+        if temp:
+            remove_nc(f_nc)
 
     return kept_files
 
@@ -691,3 +694,93 @@ def radar_to_nc(radar,original_file,output_dir,suffix=None,overwrite=True):
     pyart.io.write_cfradial(output_path, radar)
 
     return output_path
+
+
+def add_temperature_field_from_sounding(
+    radar,
+    sounding_df,
+    height_col='geopotential height_m',
+    temp_col='temperature_C',
+    field_name='temperature'
+):
+    """
+    Interpolate sounding temperature profile onto radar gates and
+    add as a new field to a Py-ART radar object.
+
+    Parameters
+    ----------
+    radar : pyart.core.Radar
+        Radar object.
+    sounding_df : pandas.DataFrame
+        Sounding data containing height and temperature columns.
+    height_col : str, optional
+        Name of sounding height column (meters MSL).
+    temp_col : str, optional
+        Name of sounding temperature column (deg C).
+    field_name : str, optional
+        Name of field to add to radar object.
+
+    Returns
+    -------
+    radar : pyart.core.Radar
+        Updated radar object with temperature field added.
+    """
+    import numpy as np
+    from scipy.interpolate import interp1d
+    # Extract sounding profile
+    z_snd = sounding_df[height_col].to_numpy()
+    t_snd = sounding_df[temp_col].to_numpy()
+
+    # Remove invalid values
+    valid = np.isfinite(z_snd) & np.isfinite(t_snd)
+    z_snd = z_snd[valid]
+    t_snd = t_snd[valid]
+
+    # Sort by height just in case
+    sort_idx = np.argsort(z_snd)
+    z_snd = z_snd[sort_idx]
+    t_snd = t_snd[sort_idx]
+
+    # Remove duplicate heights if present
+    z_unique, unique_idx = np.unique(z_snd, return_index=True)
+    t_unique = t_snd[unique_idx]
+
+    # Create interpolation function
+    temp_interp = interp1d(
+        z_unique,
+        t_unique,
+        bounds_error=False,
+        fill_value='extrapolate'
+    )
+
+    # Radar gate heights
+    gate_z = radar.gate_z['data']
+    radar_alt = float(radar.altitude['data'][0])
+
+    # Convert masked array to normal ndarray
+    if np.ma.isMaskedArray(gate_z):
+        gate_z = gate_z.filled(np.nan)
+    else:
+        gate_z = np.asarray(gate_z, dtype=float)
+
+    gate_z_msl = gate_z + radar_alt
+
+    # Interpolate temperature to gates
+    temp_gate = np.full(gate_z_msl.shape, np.nan, dtype=float)
+
+    valid_gate_mask = np.isfinite(gate_z_msl)
+    temp_gate[valid_gate_mask] = temp_interp(gate_z_msl[valid_gate_mask])
+
+    # Build Py-ART field dictionary
+    temp_field = {
+        'data': np.ma.masked_invalid(temp_gate),
+        'units': 'degC',
+        'long_name': 'air_temperature',
+        'standard_name': 'air_temperature',
+        'comments': 'Interpolated from sounding profile'
+    }
+
+    # Add field
+    radar.add_field(field_name, temp_field, replace_existing=True)
+
+    return radar
