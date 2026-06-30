@@ -1,0 +1,12 @@
+Metadata-Version: 2.4
+Name: armor_tools
+Version: 0.1
+Requires-Python: >=3.10
+License-File: LICENSE
+Requires-Dist: pathlib
+Requires-Dist: numpy
+Requires-Dist: xarray
+Requires-Dist: matplotlib
+Dynamic: license-file
+Dynamic: requires-dist
+Dynamic: requires-python

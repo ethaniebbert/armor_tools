@@ -18,14 +18,14 @@ import pyart
 ROOT = Path('/nas/rhome/eebbert/armor/cfrad/')
 
 # (year, month, date, hour, minute, second)
-start_datetime = datetime(2025, 5, 20, 0, 0, 0)
-end_datetime   = datetime(2025, 5, 20, 23, 59, 59)
+start_datetime = datetime(2026, 6, 22, 15, 0, 0)
+end_datetime   = datetime(2026, 6, 23, 5, 0, 0)
 
 # output directory
 start_str = start_datetime.strftime('%Y%m%d')
 end_str = end_datetime.strftime('%Y%m%d')
 date_str = start_str if start_str == end_str else f"{start_str}_{end_str}"
-output = Path(f'/wopr1/timeslice/armor_BNF/{date_str}')
+output = Path(f'/nas/rhome/eebbert/armor/filtered/{date_str}')
 output.mkdir(parents=True, exist_ok=True)
 
 
@@ -34,9 +34,16 @@ el_offset = 0.9
 az_offset_sector = 3.1
 
 # Values for clutter filtering
-SNR = 5 # SNR threshold
-RHO = 0.6 #rho hv threshold
+SNR = 6 # SNR threshold
+RHO = 0.55 #rho hv threshold
+vel_notch = 0.50 #m/s; velocity threshold
+
 fields_to_filter = ['REF', 'VEL', 'ZDR', 'RHO', 'PHI', 'SW']
+filtered_fields = [f'F{field}' for field in fields_to_filter if field!='VEL']
+
+
+
+
 
 
 # QUALITY CONTROL SCRIPT DON'T EDIT ANYTHING BELOW THIS
@@ -53,7 +60,7 @@ rhi_files = analysis.filter_files_vcp(files, vcp_min=0, vcp_max=100)
 print(f'RHI Files: {len(rhi_files)}')
 ppi_files = analysis.filter_files_vcp(files, vcp_min=200, vcp_max=300)
 print(f'PPI Files: {len(ppi_files)}')
-ppi_sector_files = analysis.filter_files_vcp(files, vcp_min=100, vcp_max=200)
+ppi_sector_files = analysis.filter_files_vcp(files, vcp_min=300, vcp_max=400)
 print(f'PPI Sector Files: {len(ppi_sector_files)}')
 # other files outside of VCP filter
 used_files = set(rhi_files) | set(ppi_files) | set(ppi_sector_files)
@@ -83,7 +90,7 @@ for f in tqdm(rhi_files, desc='QC-ing RHI Files', unit='file'):
         # clutter filtering
         for field in fields_to_filter:
             if field in radar.fields:
-                radar = analysis.noise_filter(radar, field, SNR=SNR, rho=RHO)
+                radar = analysis.noise_filter(radar, field, SNR=SNR, rho=RHO, vel_notch=vel_notch)
             else:
                 print(f'{field} not found in {f.name}')
 
@@ -93,6 +100,9 @@ for f in tqdm(rhi_files, desc='QC-ing RHI Files', unit='file'):
         else:
             print(f'FVEL not found in {f.name}, skipping dealiasing.')
 
+        # applying velocity mask to other fields
+        radar = analysis.apply_velocity_mask(radar=radar, vel_field='FVEL', fields=filtered_fields)
+        
         output_dir_rhi = output / 'rhi'
         output_dir_rhi.mkdir(parents=True, exist_ok=True)
         # saving corrected radar object to .nc file
@@ -122,7 +132,7 @@ for f in tqdm(ppi_files, desc='QC-ing PPI Files', unit='file'):
         # clutter filtering
         for field in fields_to_filter:
             if field in radar.fields:
-                radar = analysis.noise_filter(radar, field, SNR=SNR, rho=RHO)
+                radar = analysis.noise_filter(radar, field, SNR=SNR, rho=RHO, vel_notch=vel_notch)
             else:
                 print(f'{field} not found in {f.name}')
 
@@ -131,6 +141,9 @@ for f in tqdm(ppi_files, desc='QC-ing PPI Files', unit='file'):
             radar = analysis.dealias_velocity(radar, vel_field='FVEL')
         else:
             print(f'FVEL not found in {f.name}, skipping dealiasing.')
+
+        # applying velocity mask to other fields
+        radar = analysis.apply_velocity_mask(radar=radar, vel_field='FVEL', fields=filtered_fields)
 
         output_dir_ppi = output / 'ppi'
         output_dir_ppi.mkdir(parents=True, exist_ok=True)
@@ -163,7 +176,7 @@ for f in tqdm(ppi_sector_files, desc='QC-ing PPI Sector Files', unit='file'):
         # clutter filtering
         for field in fields_to_filter:
             if field in radar.fields:
-                radar = analysis.noise_filter(radar, field, SNR=SNR, rho=RHO)
+                radar = analysis.noise_filter(radar, field, SNR=SNR, rho=RHO, vel_notch=vel_notch)
             else:
                 print(f'{field} not found in {f.name}')
 
@@ -173,6 +186,8 @@ for f in tqdm(ppi_sector_files, desc='QC-ing PPI Sector Files', unit='file'):
         else:
             print(f'FVEL not found in {f.name}, skipping dealiasing.')
 
+        # applying velocity mask to other fields
+        radar = analysis.apply_velocity_mask(radar=radar, vel_field='FVEL', fields=filtered_fields)
         output_dir_sec = output / 'sec'
         output_dir_sec.mkdir(parents=True, exist_ok=True)
         # saving corrected radar object to .nc file
