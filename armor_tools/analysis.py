@@ -353,64 +353,77 @@ def correct_azimuth_pointing_angle_ppi_dynamic(radar):
 
     return radar
 
-def correct_azimuth_pointing_angle_sector(radar, offset=3.1, direction_sensitive=True, verbose=True):
+def correct_azimuth_pointing_angle_sector_dynamic(radar):
     """
-    Apply a simple hard-coded azimuth correction per sweep.
-    This offset was found visiauuly and serves as a first pass, the correction may not be 100% accurate
+    Apply a scan-speed-dependent azimuth correction per sweep for sector scans.
+
+    Sweep direction is determined per sweep from the azimuth trend (CW vs CCW).
+    The correction magnitude is interpolated from empirical error tables measured
+    from the ARMOR pointing study.
+
     Parameters
     ----------
     radar : Py-ART radar object
-    offset : float
-        Azimuth correction magnitude in degrees.
-    direction_sensitive : bool
-        If True, apply +offset for clockwise sweeps and -offset for
-        counterclockwise sweeps.
-        If False, apply the same +offset to all sweeps.
-    verbose : bool
-        If True, print sweep-by-sweep correction info.
 
     Returns
     -------
     radar
-        Py-ART radar object with azimuth corrections applied.
+        Py-ART radar object with azimuth corrections applied per sweep.
     """
 
+    speeds = np.array([10, 13, 17])
+
+    # CW errors are negative (antenna lags), so correction = -error is positive
+    cw_errors = np.array([-1.11, -1.57, -2.16])
+    cw_coef = np.polyfit(speeds, cw_errors, 1)
+    cw_slope = -cw_coef[0]
+    cw_intercept = -cw_coef[1]
+
+    # CCW errors are positive (antenna leads), so correction = -error is negative
+    ccw_errors = np.array([1.83, 2.23, 2.76])
+    ccw_coef = np.polyfit(speeds, ccw_errors, 1)
+    ccw_slope = -ccw_coef[0]
+    ccw_intercept = -ccw_coef[1]
+
     for sweep in range(radar.nsweeps):
+
         start = radar.sweep_start_ray_index['data'][sweep]
         end = radar.sweep_end_ray_index['data'][sweep] + 1
 
         az = np.asarray(radar.azimuth['data'][start:end])
+        time_vals = np.asarray(radar.time['data'][start:end])
 
         if len(az) < 2:
             continue
 
-        # unwrap so crossing 360 does not fake a direction change
+        # unwrap azimuth so 359 -> 0 behaves correctly
         az_unwrapped = np.rad2deg(np.unwrap(np.deg2rad(az)))
 
-        # radar azimuth increasing = clockwise
+        # determine sweep direction from azimuth trend
         if az_unwrapped[-1] > az_unwrapped[0]:
             direction = 'cw'
         else:
             direction = 'ccw'
 
-        if direction_sensitive:
-            signed_offset = offset if direction == 'cw' else -offset
+        # compute sweep-mean scan speed
+        sweep_dt = time_vals[-1] - time_vals[0]
+        if sweep_dt <= 0:
+            print(f'Sweep {sweep}: invalid sweep duration, skipping')
+            continue
+
+        sweep_dtheta = np.abs(az_unwrapped[-1] - az_unwrapped[0])
+        scan_speed = sweep_dtheta / sweep_dt
+
+        if direction == 'cw':
+            correction = cw_slope * scan_speed + cw_intercept
         else:
-            signed_offset = offset
+            correction = ccw_slope * scan_speed + ccw_intercept
 
-        radar.azimuth['data'][start:end] = (
-            radar.azimuth['data'][start:end] + signed_offset
-        ) % 360.0
-
-        if verbose:
-            print(
-                f"Sweep {sweep}: direction={direction}, "
-                f"applied correction={signed_offset:+.3f} deg"
-            )
+        radar.azimuth['data'][start:end] = (radar.azimuth['data'][start:end] + correction) % 360.0
 
     return radar
 
-def noise_filter(radar, field_in,  SNR = 5, rho = 0.6):
+def noise_filter(radar, field_in, SNR=5, rho=0.6, vel_notch=None, vel_field='VEL'):
     '''
     Applies a basic clutter filter to filter out noise.
     It is based on thresholds of SNR and RHOHV, change these as necessary for your data.
@@ -418,15 +431,20 @@ def noise_filter(radar, field_in,  SNR = 5, rho = 0.6):
     Parameters
     ----------
     radar: pyart radar object
-    field_in: string 
+    field_in: string
         the field you wish to filter
-    SNR: float 
+    SNR: float
         Signal to Noise Ratio Threshold, everything below this will be masked out, 5 is default
     rho: float
         Correlation Coefficient Threshold, everything below this will be masked out, 0.6 is default, which is a decent threshold for non-meteorological echos during convection
+    vel_notch: float or None
+        Half-width of the near-zero velocity notch filter in m/s. Gates where
+        |velocity| < vel_notch will be masked. None disables this filter (default).
+    vel_field: str
+        Name of the velocity field to use for the notch filter. Default is 'VEL'.
 
     Returns
-    ------- 
+    -------
         radar: pyart radar object with "F{field}" field added
     '''
 
@@ -434,6 +452,8 @@ def noise_filter(radar, field_in,  SNR = 5, rho = 0.6):
     gatefilter = pyart.correct.GateFilter(radar)
     gatefilter.exclude_below('SNR', SNR)
     gatefilter.exclude_below('RHO', rho)
+    if vel_notch is not None:
+        gatefilter.exclude_inside(vel_field, -vel_notch, vel_notch)
 
     # Get reflectivity field
     field = radar.fields[field_in]
@@ -465,6 +485,46 @@ def noise_filter(radar, field_in,  SNR = 5, rho = 0.6):
     radar.add_field(f'F{field_in}', filtered_field_dict, replace_existing=True)
 
     return radar
+
+def apply_velocity_mask(radar, vel_field='FVEL', fields=None):
+    """
+    Propagate the mask from a filtered velocity field to other radar fields.
+    Useful for removing second-trip echoes from non-velocity fields after
+    dealias_velocity has already masked them in the velocity field.
+
+    Parameters
+    ----------
+    radar : pyart.core.Radar
+        Py-ART radar object.
+    vel_field : str, optional
+        Name of the masked velocity field whose mask will be propagated.
+        Default is 'FVEL'.
+    fields : list of str or None, optional
+        List of field names to apply the mask to. If None, applies to all
+        fields except vel_field.
+
+    Returns
+    -------
+    radar : pyart.core.Radar
+        Radar object with the velocity mask applied to the specified fields.
+    """
+    if vel_field not in radar.fields:
+        raise KeyError(f"Field '{vel_field}' not found in radar.fields")
+
+    vel_mask = np.ma.getmaskarray(radar.fields[vel_field]['data'])
+
+    if fields is None:
+        fields = [f for f in radar.fields if f != vel_field]
+
+    for field in fields:
+        if field not in radar.fields:
+            continue
+        data = radar.fields[field]['data']
+        combined_mask = vel_mask | np.ma.getmaskarray(data)
+        radar.fields[field]['data'] = np.ma.masked_where(combined_mask, data)
+
+    return radar
+
 
 def find_files_in_timerange(root: Path, start_datetime: datetime, end_datetime: datetime) -> List[Path]:
     """
@@ -505,7 +565,7 @@ def find_files_in_timerange(root: Path, start_datetime: datetime, end_datetime: 
 
         if day_dir.exists() and day_dir.is_dir():
             seen_timestamps = set()
-            for pattern in ("ARMR*.nc", "ARMR*.nc.xz"):
+            for pattern in ("ARMR*.nc.xz", "ARMR*.nc"):
                 for file_path in day_dir.glob(pattern):
                     try:
                         timestamp_str = file_path.name[len("ARMR"):len("ARMR") + 14]
