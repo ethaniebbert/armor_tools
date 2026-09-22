@@ -459,13 +459,13 @@ def noise_filter(radar, field_in, SNR=5, rho=0.6, vel_notch=None, vel_field='VEL
     field = radar.fields[field_in]
     field_data = field['data']
 
-    #extracting field metadata
-    coordinates = field['coordinates']
-    valid_min = field['valid_min']
-    valid_max = field['valid_max']
-    standard_name = f"filtered_{field['standard_name']}"
-    long_name = f"Filtered {field['long_name']}"
-    units = field['units']
+    #extracting field metadata (not every field carries valid_min/valid_max/long_name)
+    coordinates = field.get('coordinates')
+    valid_min = field.get('valid_min')
+    valid_max = field.get('valid_max')
+    standard_name = f"filtered_{field.get('standard_name', field_in)}"
+    long_name = f"Filtered {field.get('long_name', field.get('standard_name', field_in))}"
+    units = field.get('units')
 
     # Mask data using gatefilter
     masked_data = np.ma.masked_where(gatefilter.gate_excluded, field_data)
